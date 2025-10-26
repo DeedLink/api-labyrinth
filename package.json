@@ -1,0 +1,8 @@
+{
+  "name": "api-labyrinth",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:DeedLink/api-labyrinth.git",
+  "author": "DulshanSiriwardhana <dulshansiriwardhana70@gmail.com>",
+  "license": "MIT"
+}
