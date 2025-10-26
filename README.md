@@ -18,7 +18,7 @@ The main goal is to overcome the challenge where an HTTPS frontend cannot direct
 
 - User Service
 - Transaction Service
-- Lead Service
+- Deed Service
 - IPFS Microservice
 - Pinata Service
 - Survey Plan Service
