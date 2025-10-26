@@ -14,9 +14,12 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-service-map-password')
-    res.status(200).end()
-    return
+    return res.status(200).end()
   }
+
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-service-map-password')
 
   try {
     const url = new URL(req.url, `http://${req.headers.host}`)
@@ -63,16 +66,16 @@ export default async function handler(req, res) {
     const response = await fetch(targetUrl, {
       method: req.method,
       headers,
-      body: ['GET', 'HEAD'].includes(req.method) ? undefined : req,
+      body: ['GET', 'HEAD'].includes(req.method) ? undefined : req.body,
+    })
+
+    response.headers.forEach((value, key) => {
+      if (!['access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers'].includes(key.toLowerCase())) {
+        res.setHeader(key, value)
+      }
     })
 
     res.status(response.status)
-    response.headers.forEach((value, key) => res.setHeader(key, value))
-
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-service-map-password')
-
     const buffer = Buffer.from(await response.arrayBuffer())
     res.send(buffer)
   } catch (err) {
