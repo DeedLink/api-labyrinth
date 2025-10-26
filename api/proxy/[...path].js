@@ -10,6 +10,14 @@ function getServiceMap() {
 }
 
 export default async function handler(req, res) {
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-service-map-password')
+    res.status(200).end()
+    return
+  }
+
   try {
     const url = new URL(req.url, `http://${req.headers.host}`)
     const fullPath = url.pathname.replace('/api/proxy/', '')
@@ -60,6 +68,10 @@ export default async function handler(req, res) {
 
     res.status(response.status)
     response.headers.forEach((value, key) => res.setHeader(key, value))
+
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-service-map-password')
 
     const buffer = Buffer.from(await response.arrayBuffer())
     res.send(buffer)
