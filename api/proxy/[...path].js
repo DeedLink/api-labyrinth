@@ -9,17 +9,22 @@ function getServiceMap() {
   }
 }
 
+function setCorsHeaders(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, x-service-map-password'
+  )
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-service-map-password')
+    setCorsHeaders(res)
     return res.status(200).end()
   }
 
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-service-map-password')
+  setCorsHeaders(res)
 
   try {
     const url = new URL(req.url, `http://${req.headers.host}`)
@@ -63,10 +68,19 @@ export default async function handler(req, res) {
     delete headers['content-length']
     delete headers['x-service-map-password']
 
+    let body = undefined
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      if (req.headers['content-type']?.includes('application/json')) {
+        body = JSON.stringify(req.body)
+      } else {
+        body = req.body
+      }
+    }
+
     const response = await fetch(targetUrl, {
       method: req.method,
       headers,
-      body: ['GET', 'HEAD'].includes(req.method) ? undefined : req.body,
+      body,
     })
 
     response.headers.forEach((value, key) => {
@@ -75,11 +89,14 @@ export default async function handler(req, res) {
       }
     })
 
+    setCorsHeaders(res)
+
     res.status(response.status)
     const buffer = Buffer.from(await response.arrayBuffer())
     res.send(buffer)
   } catch (err) {
     console.error('Proxy error:', err)
+    setCorsHeaders(res)
     res.status(502).json({
       error: 'Upstream request failed',
       details: err.message,
