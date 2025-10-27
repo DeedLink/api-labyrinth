@@ -9,22 +9,15 @@ function getServiceMap() {
   }
 }
 
-function setCorsHeaders(res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, x-service-map-password'
-  )
-}
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-service-map-password')
+  res.setHeader('Access-Control-Max-Age', '86400')
 
-export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
-    setCorsHeaders(res)
     return res.status(200).end()
   }
-
-  setCorsHeaders(res)
 
   try {
     const url = new URL(req.url, `http://${req.headers.host}`)
@@ -60,43 +53,55 @@ export default async function handler(req, res) {
       ? `${cleanBaseUrl}/${cleanServicePath}${url.search}`
       : `${cleanBaseUrl}${url.search}`
 
-    console.log('Proxying:', { serviceKey, targetUrl })
+    console.log('Proxying:', { serviceKey, method: req.method, targetUrl })
 
-    const headers = { ...req.headers }
-    delete headers.host
-    delete headers.connection
-    delete headers['content-length']
-    delete headers['x-service-map-password']
+    const forwardHeaders = {}
+    const skipHeaders = ['host', 'connection', 'content-length', 'x-service-map-password']
+    
+    Object.keys(req.headers).forEach(key => {
+      if (!skipHeaders.includes(key.toLowerCase())) {
+        forwardHeaders[key] = req.headers[key]
+      }
+    })
 
     let body = undefined
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-      if (req.headers['content-type']?.includes('application/json')) {
+      if (req.body && Object.keys(req.body).length > 0) {
         body = JSON.stringify(req.body)
+        forwardHeaders['content-type'] = 'application/json'
       } else {
-        body = req.body
+        body = await new Promise((resolve) => {
+          let data = ''
+          req.on('data', chunk => {
+            data += chunk
+          })
+          req.on('end', () => {
+            resolve(data || undefined)
+          })
+        })
       }
     }
 
     const response = await fetch(targetUrl, {
       method: req.method,
-      headers,
+      headers: forwardHeaders,
       body,
     })
 
+    console.log('Response:', { status: response.status, statusText: response.statusText })
+
+    const corsHeaders = ['access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age']
     response.headers.forEach((value, key) => {
-      if (!['access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers'].includes(key.toLowerCase())) {
+      if (!corsHeaders.includes(key.toLowerCase())) {
         res.setHeader(key, value)
       }
     })
 
-    setCorsHeaders(res)
-
-    res.status(response.status)
     const buffer = Buffer.from(await response.arrayBuffer())
-    res.send(buffer)
+    res.status(response.status).send(buffer)
+
   } catch (err) {
     console.error('Proxy error:', err)
-    setCorsHeaders(res)
     res.status(502).json({
       error: 'Upstream request failed',
       details: err.message,
