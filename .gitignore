@@ -1,11 +1,24 @@
+# Dependencies
 node_modules/
+
+# Vercel
+.vercel
+
+# Environment
 .env
 .env.local
-.env.*.local
-.vercel/
+.env*.local
+
+# Build
 dist/
-out/
+.next/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# IDE
 .vscode/
 .idea/
-*.log
+*.swp
+*.swo
